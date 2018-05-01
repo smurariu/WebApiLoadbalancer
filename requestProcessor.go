@@ -33,6 +33,27 @@ func processRequests() {
 			appserverURL := appservers[currentIndex]
 			go processRequest(appserverURL, request)
 
+		case host := <-registerCh:
+			println("registering " + host)
+			isFound := false
+			for _, h := range appservers {
+				if host == h {
+					isFound = true
+					break
+				}
+			}
+			if !isFound {
+				appservers = append(appservers, host)
+			}
+
+		case host := <-unregisterCh:
+			println("unregistering " + host)
+			for i := len(appservers) - 1; i >= 0; i-- {
+				if appservers[i] == host {
+					//using the spread operator to spread out the remaining elements because you can't append a slice to a slice
+					appservers = append(appservers[:i], appservers[i+1:]...)
+				}
+			}
 		}
 	}
 }

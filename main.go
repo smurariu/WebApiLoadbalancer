@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 type webRequest struct {
@@ -13,7 +14,9 @@ type webRequest struct {
 }
 
 var (
-	requestCh = make(chan *webRequest)
+	requestCh    = make(chan *webRequest)
+	registerCh   = make(chan string)
+	unregisterCh = make(chan string)
 )
 
 var (
@@ -48,7 +51,30 @@ func main() {
 
 	go http.ListenAndServe(":2000", nil)
 
+	go http.ListenAndServe(":2002", new(appserverHandler))
+
 	println("Load balancer stared, pres <Enter> to exit.")
 
 	fmt.Scanln()
+}
+
+type appserverHandler struct{}
+
+func (h *appserverHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ip := ""
+
+	if strings.HasPrefix(r.RemoteAddr, "[::1]") {
+		ip = "localhost"
+	} else {
+		ip = strings.Split(r.RemoteAddr, ":")[0]
+	}
+
+	port := r.URL.Query().Get("port")
+	switch r.URL.Path {
+	case "/register":
+		registerCh <- ip + ":" + port
+
+	case "/unregister":
+		unregisterCh <- ip + ":" + port
+	}
 }
