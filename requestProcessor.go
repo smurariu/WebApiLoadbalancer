@@ -11,6 +11,8 @@ var (
 	appservers   = []string{}
 	currentIndex = 0
 	client       = http.Client{Transport: &transport, Timeout: 10 * time.Second}
+	httpScheme   = "http"
+	pingEndpoint = "/_monitoring/ping"
 )
 
 func processRequests() {
@@ -54,15 +56,26 @@ func processRequests() {
 					appservers = append(appservers[:i], appservers[i+1:]...)
 				}
 			}
+		case <-heartbeat:
+			println("heartbeat")
+			servers := appservers[:] //copy the slice
+			go func(servers []string) {
+				for _, host := range servers {
+					resp, err := http.Get(httpScheme + "://" + host + pingEndpoint)
+					if err != nil || resp.StatusCode != 204 {
+						unregisterCh <- host
+					}
+				}
+			}(servers)
 		}
 	}
 }
 
 func processRequest(appserverURL string, request *webRequest) {
 	hostURL, _ := url.Parse(request.r.URL.String())
-	hostURL.Scheme = "http"
+	hostURL.Scheme = httpScheme
 	hostURL.Host = appserverURL
-	println(appserverURL)
+	println("Will use " + appserverURL)
 	println(hostURL.String())
 
 	//new up a request and add the headers

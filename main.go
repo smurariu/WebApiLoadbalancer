@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type webRequest struct {
@@ -17,6 +18,7 @@ var (
 	requestCh    = make(chan *webRequest)
 	registerCh   = make(chan string)
 	unregisterCh = make(chan string)
+	heartbeat    = time.Tick(5 * time.Second)
 )
 
 var (
